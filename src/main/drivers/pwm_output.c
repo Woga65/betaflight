@@ -26,13 +26,14 @@
 #include "platform.h"
 
 #ifdef USE_PWM_OUTPUT
-
 #include "drivers/time.h"
 
 #include "drivers/io.h"
 #include "pwm_output.h"
 #include "timer.h"
 #include "drivers/pwm_output.h"
+
+#include "pg/motor.h"
 
 static FAST_RAM_ZERO_INIT pwmWriteFn *pwmWrite;
 static FAST_RAM_ZERO_INIT pwmOutputPort_t motors[MAX_SUPPORTED_MOTORS];
@@ -779,4 +780,5 @@ void beeperPwmInit(const ioTag_t tag, uint16_t frequency)
     }
 }
 #endif // USE_BEEPER
-#endif
+#endif //USE_PWM_OUTPUT
+

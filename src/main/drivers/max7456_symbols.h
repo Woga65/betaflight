@@ -22,9 +22,10 @@
 #pragma once
 
 //Misc
+#define SYM_NONE                    0x00
 #define SYM_END_OF_FONT             0xFF
 #define SYM_BLANK                   0x20
-#define SYM_COLON                   0x2D
+#define SYM_HYPHEN                  0x2D
 #define SYM_BBLOG                   0x10
 #define SYM_HOMEFLAG                0x11
 //#define SYM_RPM                     0x12
@@ -41,16 +42,19 @@
 
 // RSSI
 #define SYM_RSSI                    0x01
+#define SYM_LINK_QUALITY            0x7B
 
 // Throttle Position (%)
 #define SYM_THR                     0x04
 
 // Unit Icons (Metric)
 #define SYM_M                       0x0C
+#define SYM_KM                      0x7D
 #define SYM_C                       0x0E
 
 // Unit Icons (Imperial)
 #define SYM_FT                      0x0F
+#define SYM_MILES                   0x7E
 #define SYM_F                       0x0D
 
 // Heading Graphics
@@ -90,6 +94,9 @@
 #define SYM_ARROW_14                0x6D
 #define SYM_ARROW_15                0x6E
 #define SYM_ARROW_16                0x6F
+
+#define SYM_ARROW_SMALL_UP          0x75
+#define SYM_ARROW_SMALL_DOWN        0x76
 
 // AH Bars
 #define SYM_AH_BAR9_0               0x80
@@ -136,6 +143,8 @@
 #define SYM_SPEED                   0x70
 #define SYM_KPH                     0x9E
 #define SYM_MPH                     0x9D
+#define SYM_MPS                     0x9F
+#define SYM_FTPS                    0x99
 
 // Menu cursor
 #define SYM_CURSOR                  SYM_AH_LEFT

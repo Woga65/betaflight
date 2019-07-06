@@ -60,7 +60,7 @@
 #endif
 #endif
 
-#if !defined(USE_BARO)
+#if !defined(USE_BARO) && !defined(USE_GPS)
 #undef USE_VARIO
 #endif
 
@@ -266,6 +266,10 @@
 #define USE_SERIAL_4WAY_BLHELI_INTERFACE
 #endif
 
+#if !defined(USE_PWM_OUTPUT)
+#undef USE_SERIAL_4WAY_BLHELI_INTERFACE // implementation requires USE_PWM_OUTPUT to find motor outputs.
+#endif
+
 #if !defined(USE_LED_STRIP)
 #undef USE_LED_STRIP_STATUS_MODE
 #endif
@@ -310,6 +314,12 @@
 #undef BEEPER_PWM_HZ
 #endif
 
+#if defined(USE_DSHOT) || defined(USE_LED_STRIP) || defined(USE_TRANSPONDER)
+#define USE_TIMER_DMA
+#else
+#undef USE_DMA_SPEC
+#endif
+
 #if !defined(USE_DMA_SPEC)
 #undef USE_TIMER_MGMT
 #endif
@@ -338,7 +348,7 @@
 #undef USE_ESCSERIAL
 #endif
 
-#if defined(EEPROM_IN_RAM) || defined(EEPROM_IN_FILE) || defined(EEPROM_IN_EXTERNAL_FLASH)
+#if defined(EEPROM_IN_RAM) || defined(EEPROM_IN_FILE) || defined(EEPROM_IN_EXTERNAL_FLASH) || defined(EEPROM_IN_SDCARD)
 #ifndef EEPROM_SIZE
 #define EEPROM_SIZE     4096
 #endif
@@ -351,4 +361,8 @@ extern uint8_t eepromData[EEPROM_SIZE];
 #endif
 extern uint8_t __config_start;   // configured via linker script when building binaries.
 extern uint8_t __config_end;
+#endif
+
+#if defined(USE_EXST)
+#define USE_FLASH_BOOT_LOADER
 #endif

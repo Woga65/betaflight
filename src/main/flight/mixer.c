@@ -33,8 +33,8 @@
 #include "common/maths.h"
 
 #include "config/feature.h"
-#include "pg/pg.h"
-#include "pg/pg_ids.h"
+
+#include "pg/motor.h"
 #include "pg/rx.h"
 
 #include "drivers/pwm_output.h"
@@ -74,46 +74,6 @@ PG_RESET_TEMPLATE(mixerConfig_t, mixerConfig,
     .yaw_motors_reversed = false,
     .crashflip_motor_percent = 0,
 );
-
-PG_REGISTER_WITH_RESET_FN(motorConfig_t, motorConfig, PG_MOTOR_CONFIG, 1);
-
-void pgResetFn_motorConfig(motorConfig_t *motorConfig)
-{
-#ifdef BRUSHED_MOTORS
-    motorConfig->minthrottle = 1000;
-    motorConfig->dev.motorPwmRate = BRUSHED_MOTORS_PWM_RATE;
-    motorConfig->dev.motorPwmProtocol = PWM_TYPE_BRUSHED;
-    motorConfig->dev.useUnsyncedPwm = true;
-#else
-#ifdef USE_BRUSHED_ESC_AUTODETECT
-    if (getDetectedMotorType() == MOTOR_BRUSHED) {
-        motorConfig->minthrottle = 1000;
-        motorConfig->dev.motorPwmRate = BRUSHED_MOTORS_PWM_RATE;
-        motorConfig->dev.motorPwmProtocol = PWM_TYPE_BRUSHED;
-        motorConfig->dev.useUnsyncedPwm = true;
-    } else
-#endif
-    {
-        motorConfig->minthrottle = 1070;
-        motorConfig->dev.motorPwmRate = BRUSHLESS_MOTORS_PWM_RATE;
-        motorConfig->dev.motorPwmProtocol = PWM_TYPE_ONESHOT125;
-    }
-#endif
-    motorConfig->maxthrottle = 2000;
-    motorConfig->mincommand = 1000;
-    motorConfig->digitalIdleOffsetValue = 550;
-#ifdef USE_DSHOT_DMAR
-    motorConfig->dev.useBurstDshot = ENABLE_DSHOT_DMAR;
-#endif
-
-#ifdef USE_TIMER
-    for (int motorIndex = 0; motorIndex < MAX_SUPPORTED_MOTORS; motorIndex++) {
-        motorConfig->dev.ioTags[motorIndex] = timerioTagGetByUsage(TIM_USE_MOTOR, motorIndex);
-    }
-#endif
-
-    motorConfig->motorPoleCount = 14;   // Most brushes motors that we use are 14 poles
-}
 
 PG_REGISTER_ARRAY(motorMixer_t, MAX_SUPPORTED_MOTORS, customMotorMixer, PG_MOTOR_MIXER, 0);
 
@@ -597,17 +557,22 @@ static void calculateThrottleAndCurrentMotorEndpoints(timeUs_t currentTimeUs)
             // INVERTED
             motorRangeMin = motorOutputLow;
             motorRangeMax = deadbandMotor3dLow;
+#ifdef USE_DSHOT
             if (isMotorProtocolDshot()) {
                 motorOutputMin = motorOutputLow;
                 motorOutputRange = deadbandMotor3dLow - motorOutputLow;
-            } else {
+            } else
+#endif
+            {
                 motorOutputMin = deadbandMotor3dLow;
                 motorOutputRange = motorOutputLow - deadbandMotor3dLow;
             }
+
             if (motorOutputMixSign != -1) {
                 reversalTimeUs = currentTimeUs;
             }
             motorOutputMixSign = -1;
+
             rcThrottlePrevious = rcCommand[THROTTLE];
             throttle = rcCommand3dDeadBandLow - rcCommand[THROTTLE];
             currentThrottleInputRange = rcCommandThrottleRange3dLow;
@@ -630,17 +595,23 @@ static void calculateThrottleAndCurrentMotorEndpoints(timeUs_t currentTimeUs)
             // INVERTED_TO_DEADBAND
             motorRangeMin = motorOutputLow;
             motorRangeMax = deadbandMotor3dLow;
+
+#ifdef USE_DSHOT
             if (isMotorProtocolDshot()) {
                 motorOutputMin = motorOutputLow;
                 motorOutputRange = deadbandMotor3dLow - motorOutputLow;
-            } else {
+            } else
+#endif
+            {
                 motorOutputMin = deadbandMotor3dLow;
                 motorOutputRange = motorOutputLow - deadbandMotor3dLow;
             }
+
             if (motorOutputMixSign != -1) {
                 reversalTimeUs = currentTimeUs;
             }
             motorOutputMixSign = -1;
+
             throttle = 0;
             currentThrottleInputRange = rcCommandThrottleRange3dLow;
         } else {
@@ -760,9 +731,11 @@ static void applyMixToMotors(float motorMix[MAX_SUPPORTED_MOTORS], motorMixer_t 
         }
 #endif
         if (failsafeIsActive()) {
+#ifdef USE_DSHOT
             if (isMotorProtocolDshot()) {
                 motorOutput = (motorOutput < motorRangeMin) ? disarmMotorOutput : motorOutput; // Prevent getting into special reserved range
             }
+#endif
             motorOutput = constrain(motorOutput, disarmMotorOutput, motorRangeMax);
         } else {
             motorOutput = constrain(motorOutput, motorRangeMin, motorRangeMax);
@@ -980,9 +953,8 @@ FAST_CODE_NOINLINE void mixTable(timeUs_t currentTimeUs, uint8_t vbatPidCompensa
 float convertExternalToMotor(uint16_t externalValue)
 {
     uint16_t motorValue;
-    switch ((int)isMotorProtocolDshot()) {
 #ifdef USE_DSHOT
-    case true:
+    if (isMotorProtocolDshot()) {
         externalValue = constrain(externalValue, PWM_RANGE_MIN, PWM_RANGE_MAX);
 
         if (featureIsEnabled(FEATURE_3D)) {
@@ -996,13 +968,11 @@ float convertExternalToMotor(uint16_t externalValue)
         } else {
             motorValue = (externalValue == PWM_RANGE_MIN) ? DSHOT_CMD_MOTOR_STOP : scaleRange(externalValue, PWM_RANGE_MIN + 1, PWM_RANGE_MAX, DSHOT_MIN_THROTTLE, DSHOT_MAX_THROTTLE);
         }
-
-        break;
-    case false:
+    }
+    else
 #endif
-    default:
+    {
         motorValue = externalValue;
-        break;
     }
 
     return (float)motorValue;
@@ -1011,9 +981,8 @@ float convertExternalToMotor(uint16_t externalValue)
 uint16_t convertMotorToExternal(float motorValue)
 {
     uint16_t externalValue;
-    switch ((int)isMotorProtocolDshot()) {
 #ifdef USE_DSHOT
-    case true:
+    if (isMotorProtocolDshot()) {
         if (featureIsEnabled(FEATURE_3D)) {
             if (motorValue == DSHOT_CMD_MOTOR_STOP || motorValue < DSHOT_MIN_THROTTLE) {
                 externalValue = PWM_RANGE_MID;
@@ -1025,12 +994,11 @@ uint16_t convertMotorToExternal(float motorValue)
         } else {
             externalValue = (motorValue < DSHOT_MIN_THROTTLE) ? PWM_RANGE_MIN : scaleRange(motorValue, DSHOT_MIN_THROTTLE, DSHOT_MAX_THROTTLE, PWM_RANGE_MIN + 1, PWM_RANGE_MAX);
         }
-        break;
-    case false:
+    }
+    else
 #endif
-    default:
+    {
         externalValue = motorValue;
-        break;
     }
 
     return externalValue;
