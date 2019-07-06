@@ -93,8 +93,7 @@
 #include "osd/osd.h"
 #include "osd/osd_elements.h"
 
-#include "pg/pg.h"
-#include "pg/pg_ids.h"
+#include "pg/motor.h"
 
 #include "rx/rx.h"
 
@@ -239,6 +238,41 @@ static void osdFormatCoordinate(char *buff, char sym, int32_t val)
     tfp_sprintf(buff + pos, "%d.%07d", val / GPS_DEGREES_DIVIDER, val % GPS_DEGREES_DIVIDER);
 }
 #endif // USE_GPS
+
+void osdFormatDistanceString(char *ptr, int distance, char leadingSymbol)
+{
+    const int convertedDistance = osdGetMetersToSelectedUnit(distance);
+    char unitSymbol;
+    char unitSymbolExtended;
+    int unitTransition;
+
+    if (leadingSymbol != SYM_NONE) {
+        *ptr++ = leadingSymbol;
+    }
+    switch (osdConfig()->units) {
+    case OSD_UNIT_IMPERIAL:
+        unitTransition = 5280;
+        unitSymbol = SYM_FT;
+        unitSymbolExtended = SYM_MILES;
+        break;
+    default:
+        unitTransition = 1000;
+        unitSymbol = SYM_M;
+        unitSymbolExtended = SYM_KM;
+        break;
+    }
+
+    if (convertedDistance < unitTransition) {
+        tfp_sprintf(ptr, "%d%c", convertedDistance, unitSymbol);
+    } else {
+        const int displayDistance = convertedDistance * 100 / unitTransition;
+        if (displayDistance >= 1000) { // >= 10 miles or km - 1 decimal place
+            tfp_sprintf(ptr, "%d.%d%c", displayDistance / 100, (displayDistance / 10) % 10, unitSymbolExtended);
+        } else {                     // < 10 miles or km - 2 decimal places
+            tfp_sprintf(ptr, "%d.%02d%c", displayDistance / 100, displayDistance % 100, unitSymbolExtended);
+        }
+    }
+}
 
 static void osdFormatPID(char * buff, const char * label, const pidf_t * pid)
 {
@@ -425,6 +459,16 @@ char osdGetSpeedToSelectedUnitSymbol(void)
     }
 }
 
+char osdGetVarioToSelectedUnitSymbol(void)
+{
+    switch (osdConfig()->units) {
+    case OSD_UNIT_IMPERIAL:
+        return SYM_FTPS;
+    default:
+        return SYM_MPS;
+    }
+}
+
 #if defined(USE_ADC_INTERNAL) || defined(USE_ESC_SENSOR)
 char osdGetTemperatureSymbolForSelectedUnit(void)
 {
@@ -465,7 +509,7 @@ static void osdElementAltitude(osdElementParms_t *element)
         osdFormatAltitudeString(element->buff, getEstimatedAltitudeCm());
     } else {
         element->buff[0] = SYM_ALTITUDE;
-        element->buff[1] = SYM_COLON; // We use this symbol when we don't have a valid measure
+        element->buff[1] = SYM_HYPHEN; // We use this symbol when we don't have a valid measure
         element->buff[2] = '\0';
     }
 }
@@ -754,11 +798,10 @@ static void osdElementGForce(osdElementParms_t *element)
 static void osdElementGpsFlightDistance(osdElementParms_t *element)
 {
     if (STATE(GPS_FIX) && STATE(GPS_FIX_HOME)) {
-        const int32_t distance = osdGetMetersToSelectedUnit(GPS_distanceFlownInCm / 100);
-        tfp_sprintf(element->buff, "%c%d%c", SYM_TOTAL_DISTANCE, distance, osdGetMetersToSelectedUnitSymbol());
+        osdFormatDistanceString(element->buff, GPS_distanceFlownInCm / 100, SYM_TOTAL_DISTANCE);
     } else {
         // We use this symbol when we don't have a FIX
-        tfp_sprintf(element->buff, "%c%c", SYM_TOTAL_DISTANCE, SYM_COLON);
+        tfp_sprintf(element->buff, "%c%c", SYM_TOTAL_DISTANCE, SYM_HYPHEN);
     }
 }
 
@@ -774,7 +817,7 @@ static void osdElementGpsHomeDirection(osdElementParms_t *element)
 
     } else {
         // We use this symbol when we don't have a FIX
-        element->buff[0] = SYM_COLON;
+        element->buff[0] = SYM_HYPHEN;
     }
 
     element->buff[1] = 0;
@@ -783,12 +826,11 @@ static void osdElementGpsHomeDirection(osdElementParms_t *element)
 static void osdElementGpsHomeDistance(osdElementParms_t *element)
 {
     if (STATE(GPS_FIX) && STATE(GPS_FIX_HOME)) {
-        const int32_t distance = osdGetMetersToSelectedUnit(GPS_distanceToHome);
-        tfp_sprintf(element->buff, "%c%d%c", SYM_HOMEFLAG, distance, osdGetMetersToSelectedUnitSymbol());
+        osdFormatDistanceString(element->buff, GPS_distanceToHome, SYM_HOMEFLAG);
     } else {
         element->buff[0] = SYM_HOMEFLAG;
         // We use this symbol when we don't have a FIX
-        element->buff[1] = SYM_COLON;
+        element->buff[1] = SYM_HYPHEN;
         element->buff[2] = '\0';
     }
 }
@@ -837,13 +879,13 @@ static void osdElementLinkQuality(osdElementParms_t *element)
     uint16_t osdLinkQuality = 0;
     if (linkQualitySource == LQ_SOURCE_RX_PROTOCOL_CRSF) { // 0-300
         osdLinkQuality = rxGetLinkQuality()  / 3.41;
-        tfp_sprintf(element->buff, "%3d", osdLinkQuality);
+        tfp_sprintf(element->buff, "%c%3d", SYM_LINK_QUALITY, osdLinkQuality);
     } else { // 0-9
         osdLinkQuality = rxGetLinkQuality() * 10 / LINK_QUALITY_MAX_VALUE;
         if (osdLinkQuality >= 10) {
             osdLinkQuality = 9;
         }
-        tfp_sprintf(element->buff, "%1d", osdLinkQuality);
+        tfp_sprintf(element->buff, "%c%1d", SYM_LINK_QUALITY, osdLinkQuality);
     }
 }
 #endif // USE_RX_LINK_QUALITY_INFO
@@ -936,11 +978,11 @@ static void osdElementNumericalVario(osdElementParms_t *element)
 #endif // USE_GPS
     if (haveBaro || haveGps) {
         const int verticalSpeed = osdGetMetersToSelectedUnit(getEstimatedVario());
-        const char directionSymbol = verticalSpeed < 0 ? SYM_ARROW_SOUTH : SYM_ARROW_NORTH;
-        tfp_sprintf(element->buff, "%c%01d.%01d", directionSymbol, abs(verticalSpeed / 100), abs((verticalSpeed % 100) / 10));
+        const char directionSymbol = verticalSpeed < 0 ? SYM_ARROW_SMALL_DOWN : SYM_ARROW_SMALL_UP;
+        tfp_sprintf(element->buff, "%c%01d.%01d%c", directionSymbol, abs(verticalSpeed / 100), abs((verticalSpeed % 100) / 10), osdGetVarioToSelectedUnitSymbol());
     } else {
         // We use this symbol when we don't have a valid measure
-        element->buff[0] = SYM_COLON;
+        element->buff[0] = SYM_HYPHEN;
         element->buff[1] = '\0';
     }
 }

@@ -49,6 +49,7 @@ const timerHardware_t timerHardware[1]; // unused
 #include "scheduler/scheduler.h"
 
 #include "pg/rx.h"
+#include "pg/motor.h"
 
 #include "rx/rx.h"
 
@@ -252,7 +253,9 @@ void systemReset(void){
     pthread_join(udpWorker, NULL);
     exit(0);
 }
-void systemResetToBootloader(void) {
+void systemResetToBootloader(bootloaderRequestType_e requestType) {
+    UNUSED(requestType);
+
     printf("[system]ResetToBootloader!\n");
     workerRunning = false;
     pthread_join(tcpWorker, NULL);
@@ -409,17 +412,16 @@ pwmOutputPort_t *pwmGetMotors(void) {
     return motors;
 }
 
+void pwmDisableMotors(void) {
+    pwmMotorsEnabled = false;
+}
+
 void pwmEnableMotors(void) {
     pwmMotorsEnabled = true;
 }
 
 bool pwmAreMotorsEnabled(void) {
     return pwmMotorsEnabled;
-}
-
-bool isMotorProtocolDshot(void)
-{
-    return false;
 }
 
 void pwmWriteMotor(uint8_t index, float value) {
@@ -468,7 +470,6 @@ char _Min_Stack_Size;
 
 // fake EEPROM
 static FILE *eepromFd = NULL;
-uint8_t eepromData[EEPROM_SIZE];
 
 void FLASH_Unlock(void) {
     if (eepromFd != NULL) {
