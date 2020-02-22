@@ -29,9 +29,6 @@
 
 #define QUAD_MOTOR_COUNT 4
 
-// Digital protocol has fixed values
-#define DSHOT_3D_FORWARD_MIN_THROTTLE 1048
-
 // Note: this is called MultiType/MULTITYPE_* in baseflight.
 typedef enum mixerMode
 {
@@ -84,6 +81,7 @@ typedef struct mixerConfig_s {
     uint8_t mixerMode;
     bool yaw_motors_reversed;
     uint8_t crashflip_motor_percent;
+    uint8_t crashflip_expo;
 } mixerConfig_t;
 
 PG_DECLARE(mixerConfig_t, mixerConfig);
@@ -108,15 +106,12 @@ void mixerConfigureOutput(void);
 
 void mixerResetDisarmedMotors(void);
 void mixTable(timeUs_t currentTimeUs, uint8_t vbatPidCompensation);
-void syncMotors(bool enabled);
-void writeMotors(void);
 void stopMotors(void);
-void stopPwmAllMotors(void);
+void writeMotors(void);
 
-float convertExternalToMotor(uint16_t externalValue);
-uint16_t convertMotorToExternal(float motorValue);
 bool mixerIsTricopter(void);
 
 void mixerSetThrottleAngleCorrection(int correctionValue);
-float mixerGetLoggingThrottle(void);
-bool isDshotTelemetryActive(void);
+float mixerGetThrottle(void);
+mixerMode_e getMixerMode(void);
+bool isFixedWing(void);

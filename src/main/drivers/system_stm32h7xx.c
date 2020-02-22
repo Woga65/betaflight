@@ -31,118 +31,6 @@
 
 void SystemClock_Config(void);
 
-
-void enablePeripherialClocks(void)
-{
-    __HAL_RCC_MDMA_CLK_ENABLE();
-    __HAL_RCC_QSPI_CLK_ENABLE();
-
-    // AHB1
-    __HAL_RCC_DMA1_CLK_ENABLE();
-    __HAL_RCC_DMA2_CLK_ENABLE();
-    __HAL_RCC_ADC12_CLK_ENABLE();
-    // USB clock will be enabled by vcpXXX/usbd_conf.c
-    // Note that enabling both ULPI and non-ULPI does not work.
-
-    // AHB2
-    __HAL_RCC_D2SRAM1_CLK_ENABLE();
-    __HAL_RCC_D2SRAM2_CLK_ENABLE();
-    __HAL_RCC_D2SRAM3_CLK_ENABLE();
-
-    // AHB4
-    __HAL_RCC_GPIOA_CLK_ENABLE();
-    __HAL_RCC_GPIOB_CLK_ENABLE();
-    __HAL_RCC_GPIOC_CLK_ENABLE();
-    __HAL_RCC_GPIOD_CLK_ENABLE();
-    __HAL_RCC_GPIOE_CLK_ENABLE();
-    __HAL_RCC_GPIOF_CLK_ENABLE();
-    __HAL_RCC_GPIOG_CLK_ENABLE();
-    __HAL_RCC_GPIOH_CLK_ENABLE();
-    __HAL_RCC_GPIOI_CLK_ENABLE();
-    __HAL_RCC_GPIOJ_CLK_ENABLE();
-    __HAL_RCC_GPIOK_CLK_ENABLE();
-    __HAL_RCC_BDMA_CLK_ENABLE();
-    __HAL_RCC_ADC3_CLK_ENABLE();
-
-    // APB3
-
-    // APB1
-    __HAL_RCC_TIM2_CLK_ENABLE();
-    __HAL_RCC_TIM3_CLK_ENABLE();
-    __HAL_RCC_TIM4_CLK_ENABLE();
-    __HAL_RCC_TIM5_CLK_ENABLE();
-    __HAL_RCC_TIM6_CLK_ENABLE();
-    __HAL_RCC_TIM7_CLK_ENABLE();
-    __HAL_RCC_TIM12_CLK_ENABLE();
-    __HAL_RCC_TIM13_CLK_ENABLE();
-    __HAL_RCC_TIM14_CLK_ENABLE();
-    __HAL_RCC_LPTIM1_CLK_ENABLE();
-    __HAL_RCC_SPI2_CLK_ENABLE();
-    __HAL_RCC_SPI3_CLK_ENABLE();
-    __HAL_RCC_USART2_CLK_ENABLE();
-    __HAL_RCC_USART3_CLK_ENABLE();
-    __HAL_RCC_UART4_CLK_ENABLE();
-    __HAL_RCC_UART5_CLK_ENABLE();
-    __HAL_RCC_I2C1_CLK_ENABLE();
-    __HAL_RCC_I2C2_CLK_ENABLE();
-    __HAL_RCC_I2C3_CLK_ENABLE();
-    __HAL_RCC_DAC12_CLK_ENABLE();
-    __HAL_RCC_UART7_CLK_ENABLE();
-    __HAL_RCC_UART8_CLK_ENABLE();
-    __HAL_RCC_CRS_CLK_ENABLE();
-
-    // APB2
-    __HAL_RCC_TIM1_CLK_ENABLE();
-    __HAL_RCC_TIM8_CLK_ENABLE();
-    __HAL_RCC_USART1_CLK_ENABLE();
-    __HAL_RCC_USART6_CLK_ENABLE();
-    __HAL_RCC_SPI1_CLK_ENABLE();
-    __HAL_RCC_SPI4_CLK_ENABLE();
-    __HAL_RCC_TIM15_CLK_ENABLE();
-    __HAL_RCC_TIM16_CLK_ENABLE();
-    __HAL_RCC_TIM17_CLK_ENABLE();
-    __HAL_RCC_SPI5_CLK_ENABLE();
-
-    // APB4
-    __HAL_RCC_SYSCFG_CLK_ENABLE();
-    __HAL_RCC_LPUART1_CLK_ENABLE();
-    __HAL_RCC_SPI6_CLK_ENABLE();
-    __HAL_RCC_I2C4_CLK_ENABLE();
-    __HAL_RCC_LPTIM2_CLK_ENABLE();
-    __HAL_RCC_LPTIM3_CLK_ENABLE();
-    __HAL_RCC_LPTIM4_CLK_ENABLE();
-    __HAL_RCC_LPTIM5_CLK_ENABLE();
-    __HAL_RCC_COMP12_CLK_ENABLE();
-    __HAL_RCC_VREF_CLK_ENABLE();
-}
-
-void enableGPIOPowerUsageAndNoiseReductions(void)
-{
-    // GPIO initialization, copied from drivers/system_stm32f7xx.c
-    // ... It was commented out.
-    // Where does F7 initializes the GPIO pins? It doesn't do it at all???
-
-//
-//    GPIO_InitTypeDef GPIO_InitStructure;
-//    GPIO_StructInit(&GPIO_InitStructure);
-//    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP; // default is un-pulled input
-//
-//    GPIO_InitStructure.GPIO_Pin  = GPIO_Pin_All;
-//    GPIO_InitStructure.GPIO_Pin &= ~(GPIO_Pin_11 | GPIO_Pin_12); // leave USB D+/D- alone
-//
-//    GPIO_InitStructure.GPIO_Pin &= ~(GPIO_Pin_13 | GPIO_Pin_14); // leave JTAG pins alone
-//    GPIO_Init(GPIOA, &GPIO_InitStructure);
-//
-//    GPIO_InitStructure.GPIO_Pin  = GPIO_Pin_All;
-//    GPIO_Init(GPIOB, &GPIO_InitStructure);
-//
-//    GPIO_InitStructure.GPIO_Pin  = GPIO_Pin_All;
-//    GPIO_Init(GPIOC, &GPIO_InitStructure);
-//    GPIO_Init(GPIOD, &GPIO_InitStructure);
-//    GPIO_Init(GPIOE, &GPIO_InitStructure);
-
-}
-
 void configureMasterClockOutputs(void)
 {
     // Initialize pins for MCO1 and MCO2 for clock testing/verification
@@ -176,31 +64,6 @@ bool isMPUSoftReset(void)
 
 void systemInit(void)
 {
-#ifdef USE_ITCM_RAM
-    //  Mark ITCM-RAM as read-only
-    HAL_MPU_Disable();
-
-    // "For Cortex®-M7, TCMs memories always behave as Non-cacheable, Non-shared normal memories, irrespective of the memory type attributes defined in the MPU for a memory region containing addresses held in the TCM"
-    // See AN4838
-
-    MPU_Region_InitTypeDef MPU_InitStruct;
-    MPU_InitStruct.Enable = MPU_REGION_ENABLE;
-    MPU_InitStruct.BaseAddress = 0x00000000;
-    MPU_InitStruct.Size = MPU_REGION_SIZE_64KB;
-    MPU_InitStruct.AccessPermission = MPU_REGION_PRIV_RO_URO;
-    MPU_InitStruct.IsBufferable = MPU_ACCESS_BUFFERABLE;
-    MPU_InitStruct.IsCacheable = MPU_ACCESS_NOT_CACHEABLE;
-    MPU_InitStruct.IsShareable = MPU_ACCESS_NOT_SHAREABLE;
-    MPU_InitStruct.Number = MPU_REGION_NUMBER0;
-    MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
-    MPU_InitStruct.SubRegionDisable = 0x00;
-    MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_ENABLE;
-    HAL_MPU_ConfigRegion(&MPU_InitStruct);
-
-    HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
-#endif
-
-
     // Configure NVIC preempt/priority groups
     HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITY_GROUPING);
 
@@ -214,9 +77,9 @@ void systemInit(void)
 
     //RCC_ClearFlag();
 
-    enablePeripherialClocks();
-
-    enableGPIOPowerUsageAndNoiseReductions();
+    __HAL_RCC_D2SRAM1_CLK_ENABLE();
+    __HAL_RCC_D2SRAM2_CLK_ENABLE();
+    __HAL_RCC_D2SRAM3_CLK_ENABLE();
 
 #ifdef USE_MCO_OUTPUTS
     configureMasterClockOutputs();

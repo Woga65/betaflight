@@ -30,8 +30,10 @@
 #include "pg/pg.h"
 #include "pg/pg_ids.h"
 
-#include "fc/config.h"
+#include "config/config.h"
 #include "fc/runtime_config.h"
+
+#include "flight/pid.h"
 
 #include "sensors/sensors.h"
 #include "sensors/adcinternal.h"
@@ -68,7 +70,7 @@ bool sensorsAutodetect(void)
 
 #ifdef USE_ACC
     if (gyroDetected) {
-        accInit(gyro.targetLooptime);
+        accInit(gyro.accSampleRateHz);
     }
 #endif
 

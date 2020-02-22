@@ -35,7 +35,7 @@
 #include "pg/pg_ids.h"
 #include "pg/rx.h"
 
-#include "fc/config.h"
+#include "config/config.h"
 #include "fc/rc_controls.h"
 
 #include "rx/rx.h"
@@ -80,7 +80,7 @@ bool isRangeActive(uint8_t auxChannelIndex, const channelRange_t *range) {
 
 /*
  *  updateMasksForMac:
- * 
+ *
  *  The following are the possible logic states at each MAC update:
  *      AND     NEW
  *      ---     ---
@@ -93,7 +93,7 @@ void updateMasksForMac(const modeActivationCondition_t *mac, boxBitmask_t *andMa
 {
     if (bitArrayGet(andMask, mac->modeId) || !bitArrayGet(newMask, mac->modeId)) {
         bool bAnd = mac->modeLogic == MODELOGIC_AND;
-        
+
         if (!bAnd) {    // OR mac
             if (bActive) {
                 bitArrayClr(andMask, mac->modeId);

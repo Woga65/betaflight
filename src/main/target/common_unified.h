@@ -69,13 +69,20 @@
 
 #define USE_SDCARD
 #define USE_SDCARD_SPI
+#define USE_SDCARD_SDIO
 
 #define USE_FLASHFS
+#define USE_FLASH_TOOLS
 #define USE_FLASH_M25P16
-#define USE_FLASH_W25M
-#define USE_FLASH_W25N01G          // 1G NAND flash support
+#define USE_FLASH_W25N01G          // 1Gb NAND flash support
+#define USE_FLASH_W25M             // Stacked die support
+#define USE_FLASH_W25M512          // 512Kb (256Kb x 2 stacked) NOR flash support
+#define USE_FLASH_W25M02G          // 2Gb (1Gb x 2 stacked) NAND flash support
 
 #define USE_MAX7456
+
+#define USE_VTX_RTC6705
+#define USE_VTX_RTC6705_SOFTSPI
 
 #define USE_TRANSPONDER
 
@@ -114,3 +121,5 @@
 
 #define USE_RX_FLYSKY
 #define USE_RX_FLYSKY_SPI_LED
+
+#define USE_CUSTOM_DEFAULTS
