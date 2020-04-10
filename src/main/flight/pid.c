@@ -60,6 +60,7 @@
 #include "sensors/battery.h"
 #include "sensors/gyro.h"
 
+#include "rx/rx.h"
 #include "pid.h"
 
 typedef enum {
@@ -112,11 +113,13 @@ PG_RESET_TEMPLATE(pidConfig_t, pidConfig,
     .pid_process_denom = PID_PROCESS_DENOM_DEFAULT,
     .runaway_takeoff_prevention = true,
     .runaway_takeoff_deactivate_throttle = 20,  // throttle level % needed to accumulate deactivation time
-    .runaway_takeoff_deactivate_delay = 500     // Accumulated time (in milliseconds) before deactivation in successful takeoff
+    .runaway_takeoff_deactivate_delay = 500,    // Accumulated time (in milliseconds) before deactivation in successful takeoff
+    .pid_adjust_aux_channel = 0,
 );
 #else
 PG_RESET_TEMPLATE(pidConfig_t, pidConfig,
-    .pid_process_denom = PID_PROCESS_DENOM_DEFAULT
+    .pid_process_denom = PID_PROCESS_DENOM_DEFAULT,
+    .pid_adjust_aux_channel = 0,
 );
 #endif
 
@@ -761,6 +764,9 @@ void pidInitConfig(const pidProfile_t *pidProfile)
     levelRaceMode = pidProfile->level_race_mode;
 }
 
+static FAST_RAM_ZERO_INIT uint8_t pidAdjustmentChannel;
+static FAST_RAM_ZERO_INIT float pidAdjustmentFactor;
+
 void pidInit(const pidProfile_t *pidProfile)
 {
     pidSetTargetLooptime(gyro.targetLooptime); // Initialize pid looptime
@@ -769,6 +775,11 @@ void pidInit(const pidProfile_t *pidProfile)
 #ifdef USE_RPM_FILTER
     rpmFilterInit(rpmFilterConfig());
 #endif
+    pidAdjustmentFactor = 1;
+    pidAdjustmentChannel = pidConfig()->pid_adjust_aux_channel;
+    if (pidAdjustmentChannel) {
+        pidAdjustmentChannel += NON_AUX_CHANNEL_COUNT - 1;
+    }
 }
 
 #ifdef USE_ACRO_TRAINER
@@ -1447,7 +1458,11 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
         // b = 1 and only c (feedforward weight) can be tuned (amount derivative on measurement or error).
 
         // -----calculate P component
-        pidData[axis].P = pidCoefficient[axis].Kp * errorRate * tpaFactorKp;
+        // If enabled vary P and D using the content of AUXn (Heli-like vehicles, gyro-sensitivity channel).
+        if (pidAdjustmentChannel) {
+            pidAdjustmentFactor = (scaleRangef((float)rcData[pidAdjustmentChannel], PWM_RANGE_MIN, PWM_RANGE_MAX, 2.0f, 0.0f));
+        }
+        pidData[axis].P = pidCoefficient[axis].Kp * errorRate * tpaFactorKp * pidAdjustmentFactor;
         if (axis == FD_YAW) {
             pidData[axis].P = ptermYawLowpassApplyFn((filter_t *) &ptermYawLowpass, pidData[axis].P);
         }
@@ -1524,7 +1539,7 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
                 }
             }
 #endif
-            pidData[axis].D = pidCoefficient[axis].Kd * delta * tpaFactor * dMinFactor;
+            pidData[axis].D = pidCoefficient[axis].Kd * delta * tpaFactor * dMinFactor * pidAdjustmentFactor;
         } else {
             pidData[axis].D = 0;
         }
